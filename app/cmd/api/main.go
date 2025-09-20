@@ -3,15 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
-	"github.com/gmalheiro/golang-grafana-prometheus/internal/models"
+	"github.com/gmalheiro/golang-grafana-prometheus/app/internal/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var dvs []models.Device
-var port string = ":8081"
+var prometheusPort string = ":8081"
+var devicesPort string = ":8080"
 var version string
 
 func init() {
@@ -30,12 +32,29 @@ func main() {
 	m.Devices().Set(float64(len(dvs)))
 	m.Info().With(prometheus.Labels{"version": version})
 
-	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+	dmux := http.NewServeMux()
+	dmux.HandleFunc("/devices", getDevices)
 
-	http.Handle("/metrics", promHandler)
-	fmt.Printf("listening on port : %s", port)
-	http.ListenAndServe(port, nil)
-	http.HandleFunc("/devices", getDevices)
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+	pmux := http.NewServeMux()
+	pmux.Handle("/metrics", promHandler)
+
+	go func() {
+		fmt.Printf("\nListening devices on port %s", devicesPort)
+		if err := http.ListenAndServe(devicesPort, dmux); err != nil {
+			log.Fatal()
+		}
+
+	}()
+
+	go func() {
+		fmt.Printf("Listening prometheus on port %s", prometheusPort)
+		if err := http.ListenAndServe(prometheusPort, pmux); err != nil {
+			log.Fatal()
+		}
+	}()
+
+	select {}
 }
 
 func getDevices(w http.ResponseWriter, r *http.Request) {
