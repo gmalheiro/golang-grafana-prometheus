@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gmalheiro/golang-grafana-prometheus/app/internal/models"
+	"github.com/gmalheiro/golang-grafana-prometheus/internal/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
